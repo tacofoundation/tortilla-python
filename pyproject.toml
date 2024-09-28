@@ -1,17 +1,20 @@
 [tool.poetry]
-name = "tortilla_spec"
+name = "pytortilla"
 version = "0.0.1"
-description = "A simple python format to storage files."
+description = "The file format behind TACO."
 authors = ["Cesar Aybar <fcesar.aybar@uv.es>"]
-repository = "https://github.com/csaybar/tortilla-spec"
-documentation = "https://csaybar.github.io/tortilla-spec/"
+repository = "https://github.com/tacofoundation/tortilla-python"
+documentation = "https://tacofoundation.github.io/tortilla-specification/v1.1.0/"
 readme = "README.md"
 packages = [
-  {include = "tortilla_spec"}
+  {include = "pytortilla"}
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.8,<4.0"
+python = ">=3.9,<4.0"
+requests = ">=2.32.3"
+tqdm = ">=4.66.5"
+pandas = ">=2.1.4"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2.0"
