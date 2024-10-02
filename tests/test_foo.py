@@ -1,4 +1,4 @@
-from tortilla_spec.main import foo
+from pytortilla.main import foo
 
 
 def test_foo():

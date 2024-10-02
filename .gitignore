@@ -4,3 +4,5 @@ demo.py
 tortilla_spec/__pycache__/
 
 dist/
+
+pytortilla/__pycache__/
