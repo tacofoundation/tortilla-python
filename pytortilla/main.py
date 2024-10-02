@@ -40,9 +40,9 @@ def create(
         pathlib.Path: The tortilla file.
     """
 
-    if file_format not in pytortilla.utils.GDAL_FILES.__args__:
+    if file_format not in pytortilla.utils_gdal.GDAL_FILES.__args__:
         raise ValueError(
-            f"Invalid file format: {file_format}. Must be one of {pytortilla.utils.GDAL_FILES.__args__}"
+            f"Invalid file format: {file_format}. Must be one of {pytortilla.utils_gdal.GDAL_FILES.__args__}."
         )
 
     # Define the magic number
