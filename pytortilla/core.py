@@ -56,6 +56,11 @@ def read_tortilla_metadata_local(file: Union[str, pathlib.Path]) -> pd.DataFrame
     return metadata
 
 
+
+
+
+
+
 def read_tortilla_metadata_online(file: str) -> pd.DataFrame:
     """Read the metadata of a tortilla file given a URL. The
         server must support HTTP Range requests.
@@ -104,6 +109,9 @@ def read_tortilla_metadata_online(file: str) -> pd.DataFrame:
         metadata["tortilla:mode"] = "online"
 
     return metadata
+
+
+
 
 
 def compile_local(
@@ -215,6 +223,10 @@ def compile_local(
             mm[(50 + bytes_counter) :] = FOOTER
 
     return None
+
+
+
+
 
 
 def compile_online(
