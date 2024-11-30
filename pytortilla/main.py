@@ -8,7 +8,7 @@ Functions:
 import concurrent.futures
 import mmap
 import pathlib
-from typing import List, Union
+from typing import List, Union, Optional, Dict
 
 import pandas as pd
 import pyarrow as pa
@@ -24,6 +24,7 @@ def create(
     files: Union[List[str], List[pathlib.Path]],
     output: Union[str, pathlib.Path],
     file_format: pytortilla.utils_gdal.GDAL_FILES,
+    extra_metadata: Optional[pd.DataFrame] = None,
     nworkers: int = 4,
     chunk_size: int = 1024 * 1024 * 100,
     quiet: bool = False,
@@ -36,9 +37,13 @@ def create(
     Args:
         files (List[str]): The list of files to be included in the
             tortilla. All files must have the same format (same extension).
+            The files names are used to create the column "tortilla:id". The
+            files must have unique names.
         file_format (GDAL_FILES): The format of the files. This format
             must be one of the GDAL formats. For example, "GTiff", "COG",
             "PNG", etc.
+        extra_metadata (pd.DataFrame, optional): Extra metadata to be
+            included in the tortilla. Defaults to None.
         nworkers (int, optional): The number of workers to use when writing
             the tortilla. Defaults to 4.
         chunk_size (int, optional): The size of the chunks to use when writing
@@ -65,6 +70,23 @@ def create(
     metadata = pd.DataFrame.from_dict(
         dict_bytes, orient="index", columns=["tortilla:offset", "tortilla:length"]
     ).reset_index(names="tortilla:id")
+
+
+    # Add the extra metadata
+    if extra_metadata is not None:
+        # dataframe must have the same length as the files
+        if len(extra_metadata) != len(files):
+            raise ValueError(
+                "The length of the extra_metadata must be the same as the length of the files."
+            )
+        
+        # Check if the extra metadata has tortilla:id column
+        if "tortilla:id" not in extra_metadata.columns:
+            raise ValueError("The extra_metadata must have a 'tortilla:id' column.")
+        
+        # Merge the metadata
+        metadata = metadata.merge(extra_metadata, on="tortilla:id")
+
 
     # Create an in-memory Parquet file with BufferOutputStream
     with pa.BufferOutputStream() as sink:
