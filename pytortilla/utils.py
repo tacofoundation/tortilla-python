@@ -121,14 +121,14 @@ def build_simplified_range_header(dataset: pd.DataFrame) -> dict[str, str]:
     simplified_ranges = []
 
     # Get the initial offset and length
-    current_start = dataset.iloc[0]["tortilla:item_offset"]
-    current_end = current_start + dataset.iloc[0]["tortilla:item_length"]
+    current_start = dataset.iloc[0]["tortilla:offset"]
+    current_end = current_start + dataset.iloc[0]["tortilla:length"]
 
     # Iterate over the rows starting from the second row
     for i in range(1, len(dataset)):
         row = dataset.iloc[i]
-        next_start = row["tortilla:item_offset"]
-        next_end = next_start + row["tortilla:item_length"]
+        next_start = row["tortilla:offset"]
+        next_end = next_start + row["tortilla:length"]
 
         # If the current range and the next range are consecutive, merge them
         if next_start == current_end:

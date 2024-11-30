@@ -1,10 +1,18 @@
+""" This module contains the core functions of the pytortilla package.
+Functions:
+    - create: Create a tortilla file.
+    - load: Load the metadata of a tortilla file.
+    - compile: Compile a subset of a tortilla file.    
+"""
+
 import concurrent.futures
-import json
 import mmap
 import pathlib
 from typing import List, Union
 
 import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
 import tqdm
 
 import pytortilla.core
@@ -23,7 +31,7 @@ def create(
     """Create a tortilla 🫓
 
     A tortilla is a new simple format for storing same format files
-    optimized for blazing fast random access.
+    optimized for very fast random access.
 
     Args:
         files (List[str]): The list of files to be included in the
@@ -53,8 +61,25 @@ def create(
         files=files, nworkers=nworkers
     )
 
-    # Obtain the FOOTER metadata
-    FOOTER: str = json.dumps(dict_bytes).encode()
+    # Create the FOOTER metadata as pandas
+    metadata = pd.DataFrame.from_dict(
+        dict_bytes, orient="index", columns=["tortilla:offset", "tortilla:length"]
+    ).reset_index(names="tortilla:id")
+
+    # Create an in-memory Parquet file with BufferOutputStream
+    with pa.BufferOutputStream() as sink:
+        pq.write_table(
+            pa.Table.from_pandas(metadata),
+            sink,
+            compression="zstd",  # Highly efficient codec
+            compression_level=22,  # Maximum compression for Zstandard
+            use_dictionary=False,  # Optimizes for repeated values
+        )
+        # return a blob of the in-memory Parquet file as bytes
+        # Obtain the FOOTER metadata
+        FOOTER: bytes = sink.getvalue().to_pybytes()
+
+    # Define the FOOTER length and offset
     FL: bytes = len(FOOTER).to_bytes(8, "little")
     FO: bytes = (50 + bytes_counter).to_bytes(8, "little")
 
@@ -140,20 +165,20 @@ def load(file: Union[str, pathlib.Path]) -> pd.DataFrame:
         if pytortilla.utils.is_valid_url(file):
             metadata: pd.DataFrame = pytortilla.core.read_tortilla_metadata_online(file)
             partial_file: pd.Series = metadata.apply(
-                lambda row: f"/vsisubfile/{row['tortilla:item_offset']}_{row['tortilla:item_length']},/vsicurl/{file}",
+                lambda row: f"/vsisubfile/{row['tortilla:offset']}_{row['tortilla:length']},/vsicurl/{file}",
                 axis=1,
             )
         else:
             metadata: pd.DataFrame = pytortilla.core.read_tortilla_metadata_local(file)
             partial_file: pd.Series = metadata.apply(
-                lambda row: f"/vsisubfile/{row['tortilla:item_offset']}_{row['tortilla:item_length']},{file}",
+                lambda row: f"/vsisubfile/{row['tortilla:offset']}_{row['tortilla:length']},{file}",
                 axis=1,
             )
 
     elif isinstance(file, pathlib.Path):
         metadata: pd.DataFrame = pytortilla.core.read_tortilla_metadata_local(file)
         partial_file: pd.Series = metadata.apply(
-            lambda row: f"/vsisubfile/{row['tortilla:item_offset']}_{row['tortilla:item_length']},{file}",
+            lambda row: f"/vsisubfile/{row['tortilla:offset']}_{row['tortilla:length']},{file}",
             axis=1,
         )
     else:
@@ -171,7 +196,7 @@ def compile(
     nworkers: int = 4,
     force: bool = False,
     quiet: bool = False,
-) -> pathlib.Path:
+) -> pd.DataFrame:
     """Prepare a subset of a Tortilla file and write it to a new local file.
 
     Args:
@@ -188,7 +213,7 @@ def compile(
         quiet (bool, optional): If True, the function does not print any
             message. By default, it is False.
     Returns:
-        pathlib.Path: The path to the Tortilla file.
+        pd.DataFrame: The metadata of the new Tortilla file.
     """
 
     # If the folder does not exist, create it
@@ -201,7 +226,7 @@ def compile(
 
     # Remove the index from the previous dataset
     dataset = dataset.copy()
-    dataset.sort_values("tortilla:item_offset", inplace=True)
+    dataset.sort_values("tortilla:offset", inplace=True)
     dataset.reset_index(drop=True, inplace=True)
 
     # Compile your tortilla
@@ -211,4 +236,4 @@ def compile(
     if dataset["tortilla:mode"].iloc[0] == "online":
         pytortilla.core.compile_online(dataset, output, chunk_size, quiet)
 
-    return pathlib.Path(output)
+    return load(output)

@@ -149,4 +149,5 @@ GDAL_FILES = Literal[
     "ISCE",
     "Zarr",
     "HTTP",
+    "BYTES",
 ]

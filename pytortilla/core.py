@@ -1,5 +1,12 @@
+""" This module contains the core functions of the pytortilla package.
+Functions:
+    - read_tortilla_metadata_local: A function to read the metadata of a tortilla file given a local path.
+    - read_tortilla_metadata_online: A function to read the metadata of a tortilla file given a URL.
+    - compile_local: A function to prepare a subset of a local Tortilla file and write it to a new file.
+    - compile_online: A function to prepare a subset of an online Tortilla file and write it to a new local file.
+"""
+
 import concurrent.futures
-import json
 import mmap
 import pathlib
 import re
@@ -8,6 +15,9 @@ from typing import List, Tuple, Union
 import pandas as pd
 import requests
 import tqdm
+import pyarrow as pa
+import pyarrow.parquet as pq
+
 
 import pytortilla.utils
 
@@ -28,7 +38,7 @@ def read_tortilla_metadata_local(file: Union[str, pathlib.Path]) -> pd.DataFrame
         # SPLIT the static bytes
         MB: bytes = static_bytes[:2]
         FO: bytes = static_bytes[2:10]
-        FL: bytes = static_bytes[10:18]
+        #FL: bytes = static_bytes[10:18]
         DF: str = static_bytes[18:50].strip().decode()
 
         if MB != b"#y":
@@ -40,25 +50,14 @@ def read_tortilla_metadata_local(file: Union[str, pathlib.Path]) -> pd.DataFrame
         # Seek to the FOOTER offset
         f.seek(footer_offset)
 
-        # Read the bytes 100-200
-        footer_data: dict = json.loads(f.read(int.from_bytes(FL, "little")))
+        # Read the FOOTER
+        metadata = pq.read_table(pa.BufferReader(f.read())).to_pandas()
 
-        # Convert dataset to DataFrame
-        datapoints: List[tuple] = list(footer_data.items())
-        metadata = pd.DataFrame(datapoints, columns=["id", "values"])
-        metadata[["tortilla:item_offset", "tortilla:item_length"]] = pd.DataFrame(
-            metadata["values"].tolist(), index=metadata.index
-        )
-        metadata = metadata.drop(columns="values")
+        # Convert dataset to DataFrame        
         metadata["tortilla:file_format"] = DF
         metadata["tortilla:mode"] = "local"
 
     return metadata
-
-
-
-
-
 
 
 def read_tortilla_metadata_online(file: str) -> pd.DataFrame:
@@ -96,22 +95,11 @@ def read_tortilla_metadata_online(file: str) -> pd.DataFrame:
     with requests.get(file, headers=headers) as response:
 
         # Interpret the response as a JSON object
-        footer_data = json.loads(response.content)
-
-        # Convert dataset to DataFrame
-        datapoints: List[tuple] = list(footer_data.items())
-        metadata = pd.DataFrame(datapoints, columns=["id", "values"])
-        metadata[["tortilla:item_offset", "tortilla:item_length"]] = pd.DataFrame(
-            metadata["values"].tolist(), index=metadata.index
-        )
-        metadata = metadata.drop(columns="values")
+        metadata = pq.read_table(pa.BufferReader(response.content)).to_pandas()
         metadata["tortilla:file_format"] = DF
         metadata["tortilla:mode"] = "online"
 
     return metadata
-
-
-
 
 
 def compile_local(
@@ -129,20 +117,30 @@ def compile_local(
     file = dataset["tortilla:subfile"].iloc[0].split(",")[-1]
 
     # Estimate the new offset
-    dataset.loc[:, "tortilla:item_new_offset"] = (
-        dataset["tortilla:item_length"].shift(1, fill_value=0).cumsum() + 50
+    dataset.loc[:, "tortilla:new_offset"] = (
+        dataset["tortilla:length"].shift(1, fill_value=0).cumsum() + 50
     )
 
-    # From DataFrame to FOOTER
-    keys: List[str] = dataset["id"].tolist()
-    new_values: List[Tuple[int, int]] = dataset[
-        ["tortilla:item_new_offset", "tortilla:item_length"]
-    ].values.tolist()
+    # Create the new FOOTER 
+    new_footer = dataset[["tortilla:id", "tortilla:new_offset", "tortilla:length"]]
+    new_footer.columns = ["tortilla:id", "tortilla:offset", "tortilla:length"]
+    
+    # Create an in-memory Parquet file with BufferOutputStream
+    with pa.BufferOutputStream() as sink:
+        pq.write_table(
+            pa.Table.from_pandas(new_footer),
+            sink,
+            compression="zstd",  # Highly efficient codec
+            compression_level=22,  # Maximum compression for Zstandard
+            use_dictionary=False,  # Optimizes for repeated values
+        )
+        # return a blob of the in-memory Parquet file as bytes
+        # Obtain the FOOTER metadata
+        FOOTER: bytes = sink.getvalue().to_pybytes()
 
-    FOOTER = json.dumps(dict(zip(keys, new_values))).encode()
 
     # Calculate the bytes of the data blob (DATA)
-    bytes_counter: int = sum(dataset["tortilla:item_length"])
+    bytes_counter: int = sum(dataset["tortilla:length"])
 
     # Prepare the static bytes
     MB: bytes = b"#y"
@@ -197,9 +195,9 @@ def compile_local(
             ) as executor:
                 futures = []
                 for _, item in dataset.iterrows():
-                    old_offset = item["tortilla:item_offset"]
-                    new_offset = item["tortilla:item_new_offset"]
-                    length = item["tortilla:item_length"]
+                    old_offset = item["tortilla:offset"]
+                    new_offset = item["tortilla:new_offset"]
+                    length = item["tortilla:length"]
                     futures.append(
                         executor.submit(
                             write_file, file, old_offset, length, new_offset
@@ -225,13 +223,9 @@ def compile_local(
     return None
 
 
-
-
-
-
 def compile_online(
     dataset: pd.DataFrame, output: str, chunk_size: int, quiet: bool
-) -> None:
+) -> pathlib.Path:
     """Prepare a subset of an online Tortilla file and write it to a new local file.
 
     Args:
@@ -242,7 +236,7 @@ def compile_online(
         quiet (bool): Whether to suppress the progress bar.
 
     Returns:
-        None
+        pathlib.Path: The path to the new Tortilla file.
     """
 
     # Get the URL of the file
@@ -250,19 +244,30 @@ def compile_online(
     url = re.search(url_pattern, dataset["tortilla:subfile"].iloc[0]).group(0)
 
     # Calculate the new offsets
-    dataset["tortilla:item_new_offset"] = (
-        dataset["tortilla:item_length"].shift(1, fill_value=0).cumsum() + 50
+    dataset["tortilla:new_offset"] = (
+        dataset["tortilla:length"].shift(1, fill_value=0).cumsum() + 50
     )
 
-    # Convert DataFrame to FOOTER
-    ids: List[str] = dataset["id"].tolist()
-    new_values: List[Tuple[int, int]] = dataset[
-        ["tortilla:item_new_offset", "tortilla:item_length"]
-    ].values.tolist()
-    FOOTER = json.dumps(dict(zip(ids, new_values))).encode()
+    # Create the new FOOTER 
+    new_footer = dataset[["tortilla:id", "tortilla:new_offset", "tortilla:length"]]
+    new_footer.columns = ["tortilla:id", "tortilla:offset", "tortilla:length"]
+
+    # Create an in-memory Parquet file with BufferOutputStream  
+    with pa.BufferOutputStream() as sink:
+        pq.write_table(
+            pa.Table.from_pandas(new_footer),
+            sink,
+            compression="zstd",  # Highly efficient codec
+            compression_level=22,  # Maximum compression for Zstandard
+            use_dictionary=False,  # Optimizes for repeated values
+        )
+        # return a blob of the in-memory Parquet file as bytes
+        # Obtain the FOOTER metadata
+        FOOTER: bytes = sink.getvalue().to_pybytes()
+
 
     # Calculate the total size of the data
-    total_bytes: int = sum(dataset["tortilla:item_length"])
+    total_bytes: int = sum(dataset["tortilla:length"])
 
     # Prepare static bytes
     MB: bytes = b"#y"
