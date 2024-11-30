@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pytortilla"
-version = "0.0.3"
+version = "0.0.5"
 description = "The file format behind TACO."
 authors = ["Cesar Aybar <fcesar.aybar@uv.es>"]
 repository = "https://github.com/tacofoundation/tortilla-python"
