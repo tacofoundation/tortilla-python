@@ -5,14 +5,16 @@ from typing import Optional, Union
 import pandas as pd
 import pydantic
 
-from .utils import GDAL_FILES
+from .utils import GDAL_FILES, raster_centroid
 
 
 class STAC(pydantic.BaseModel):
     """SpatioTemporal Asset Catalog (STAC) metadata."""
 
     crs: str
+    raster_shape: tuple[int, int]
     geotransform: tuple[float, float, float, float, float, float]
+    centroid: Optional[str] = None
     time_start: datetime.datetime
     time_end: Optional[datetime.datetime] = None
 
@@ -65,6 +67,20 @@ class Sample(pydantic.BaseModel):
             exclude={"id", "path", "stac_data", "rai_data"}, by_alias=True
         )
 
+        # If crs, raster_shape and geotransform are not provided, then create the stac:centroid
+        if self.stac_data is not None:
+            if self.stac_data.centroid is None:
+                if (
+                    self.stac_data.crs is not None
+                    and self.stac_data.geotransform is not None
+                    and self.stac_data.raster_shape is not None
+                ):
+                    self.stac_data.centroid = raster_centroid(
+                        crs=self.stac_data.crs,
+                        geotransform=self.stac_data.geotransform,
+                        raster_shape=self.stac_data.raster_shape
+                    )
+
         # Merge all metadata into a single dictionary
         metadata = {
             "internal:path": self.path.resolve().as_posix(),
@@ -73,8 +89,10 @@ class Sample(pydantic.BaseModel):
             "tortilla:length": self.path.stat().st_size,
             "stac:crs": self.stac_data.crs,
             "stac:geotransform": self.stac_data.geotransform,
+            "stac:raster_shape": self.stac_data.raster_shape,
             "stac:time_start": self.stac_data.time_start,
             "stac:time_end": self.stac_data.time_end,
+            "stac:centroid": self.stac_data.centroid,
             "rai:populationdensity": self.rai_data.populationdensity,
             "rai:female": self.rai_data.female,
             "rai:womenreproducibleage": self.rai_data.womenreproducibleage,

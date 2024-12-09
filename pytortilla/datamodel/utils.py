@@ -1,4 +1,52 @@
-from typing import Literal
+from typing import Literal, Tuple
+from pyproj import CRS, Transformer
+
+
+def raster_centroid(
+    crs: str,
+    geotransform: Tuple[float, float, float, float, float, float],
+    raster_shape: Tuple[int, int],
+) -> str:
+    """
+    Calculate the centroid of a raster in EPSG:4326 and return a WKT string.
+
+    Args:
+        crs (str): The raster's Coordinate Reference System (e.g., "EPSG:32633").
+        geotransform (Tuple[float, float, float, float, float, float]): The 
+            geotransform of the raster following the GDAL convention:
+            (
+                top left x,
+                x resolution,
+                x rotation,
+                top left y,
+                y rotation,
+                y resolution
+            )            
+        raster_shape (Tuple[int, int]): The shape of the raster as (rows, columns).
+
+    Returns:
+        str: The centroid coordinates in EPSG:4326 as a WKT string.
+    """
+    # Extract geotransform parameters
+    origin_x, pixel_width, _, origin_y, _, pixel_height = geotransform
+    rows, cols = raster_shape
+
+    # Compute raster centroid in the raster CRS
+    centroid_x = origin_x + (cols / 2) * pixel_width
+    centroid_y = origin_y + (rows / 2) * pixel_height
+
+    # Transform centroid to EPSG:4326 using pyproj
+    transformer = Transformer.from_crs(
+        CRS.from_string(crs), CRS.from_epsg(4326), always_xy=True
+    )
+    lon, lat = transformer.transform(centroid_x, centroid_y)
+
+    # precision of 6 decimal places
+    lon = round(lon, 6)
+    lat = round(lat, 6)
+
+    return f"POINT ({lon} {lat})"
+
 
 GDAL_FILES = Literal[
     "VRT",
