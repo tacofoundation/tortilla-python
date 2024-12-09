@@ -14,3 +14,17 @@ demo2.py
 demo3.py
 
 soy_una.tortilla
+
+pytortilla/compile/__pycache__/
+
+pytortilla/create/__pycache__/
+
+pytortilla/datamodel/__pycache__/
+
+pytortilla/edit/__pycache__/
+
+pytortilla/load/__pycache__/
+
+soy_un_subset_dos.tortilla
+
+soy_un_subset.tortilla

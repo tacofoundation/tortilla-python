@@ -1,21 +1,15 @@
 <img src="https://github.com/user-attachments/assets/16d84f7d-dee7-40d9-9990-d0f31bd1b028" width="20%" style="float: right; margin-left: 10px;">
 
-[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/10Iqn9hPXXZBbnih59lV80C_9RT1ztEiG?usp=sharing)
-
-
 # The Tortilla Reader
 
 ## What is Tortilla?
 
-A Tortilla is an open-source, cloud-optimized format for storing large collections of files (referred to as "items") in a Binary Large Object (BLOB). It is quite simple, similar to [safetensor](https://huggingface.co/docs/safetensors/index) and [puffin](https://iceberg.apache.org/puffin-spec/), but designed for seamless compatibility with the Geospatial Data Abstraction Library (GDAL) [Virtual File System](https://gdal.org/en/latest/user/virtual_file_systems.html).
+TODO
 
 ## Specification
 
-Read the full specification [here](https://hackmd.io/@csaybar/B1QK_JERR).
+Read the full specification [here](TODO).
 
-<center>
-    <img src="https://hackmd.io/_uploads/SkuqknA1Jg.png" width="85%">
-</center>
 
 ## Installation
 
@@ -28,7 +22,7 @@ pip install pytortilla
 
 ## Usage
 
-The `tortilla` reader only support three methods: `create`, `load`, and `compile`.
+The `tortilla` reader only support four methods: `create`, `edit`, `load`, and `compile`.
 
 #### Create
 

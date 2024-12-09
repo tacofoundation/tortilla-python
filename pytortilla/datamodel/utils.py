@@ -150,4 +150,5 @@ GDAL_FILES = Literal[
     "Zarr",
     "HTTP",
     "BYTES",
+    "TORTILLA",
 ]

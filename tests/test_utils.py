@@ -5,13 +5,9 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 import pytest
 
-from pytortilla.utils import (
-    build_simplified_range_header,
-    get_file_size,
-    is_valid_url,
-    process_files_concurrently,
-    tortilla_message,
-)
+from pytortilla.utils import (build_simplified_range_header, get_file_size,
+                              is_valid_url, process_files_concurrently,
+                              tortilla_message)
 
 
 class TestIsValidURL:

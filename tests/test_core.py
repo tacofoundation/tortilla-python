@@ -8,12 +8,9 @@ import pandas as pd
 import pytest
 import requests
 
-from pytortilla.core import (
-    compile_local,
-    compile_online,
-    read_tortilla_metadata_local,
-    read_tortilla_metadata_online,
-)
+from pytortilla.core import (compile_local, compile_online,
+                             read_tortilla_metadata_local,
+                             read_tortilla_metadata_online)
 
 
 class TestReadTortillaMetadataLocal:

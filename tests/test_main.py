@@ -6,7 +6,7 @@ from unittest.mock import mock_open, patch
 import pandas as pd
 import pytest
 
-from pytortilla.main import compile, create, load
+from pytortilla.compile import compile, create, load
 
 
 class TestCreateFunction:
