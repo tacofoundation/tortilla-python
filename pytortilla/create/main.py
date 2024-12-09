@@ -118,6 +118,10 @@ def create_a_tortilla(
         metadata.iloc[-1]["tortilla:length"] + metadata.iloc[-1]["tortilla:offset"]
     )
 
+    # Drop the internal path
+    internal_path = metadata["internal:path"].tolist()
+    metadata.drop(columns=["internal:path"], inplace=True)
+
     # Create an in-memory Parquet file with BufferOutputStream
     with pa.BufferOutputStream() as sink:
         pq.write_table(
@@ -189,7 +193,7 @@ def create_a_tortilla(
                 # Submit the files to be written
                 futures = []
                 for path, offset, length in zip(
-                    metadata["internal:path"],
+                    internal_path,
                     metadata["tortilla:offset"],
                     metadata["tortilla:length"],
                 ):
@@ -209,6 +213,6 @@ def create_a_tortilla(
                     concurrent.futures.wait(futures)
 
             # Write the FOOTER
-            mm[bytes_counter:] = FOOTER
+            mm[bytes_counter:(bytes_counter + len(FOOTER))] = FOOTER
 
     return output

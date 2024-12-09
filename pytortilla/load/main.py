@@ -2,6 +2,8 @@ import pathlib
 from typing import List, Union
 
 import pandas as pd
+import geopandas as gpd
+import shapely.wkt
 
 from .load_local import file2metadata as local_file2metadata
 from .load_local import files2metadata as local_files2metadata
@@ -43,4 +45,21 @@ def load(file: Union[str, pathlib.Path, List[pathlib.Path], List[str]]) -> pd.Da
     else:
         raise ValueError("Invalid file type. Must be a list, string or pathlib.Path.")
 
-    return metadata
+    # Convert the DataFrame to a GeoDataFrame
+    geometadata = gpd.GeoDataFrame(
+        data=metadata,
+        geometry=metadata["stac:centroid"].apply(shapely.wkt.loads),
+        crs="EPSG:4326"
+    )
+
+    # Sort the columns
+    columns = geometadata.columns
+    internal = [col for col in columns if col.startswith("internal:")]
+    tortilla = [col for col in columns if col.startswith("tortilla:")]
+    stac = [col for col in columns if col.startswith("stac:")]
+    rai = [col for col in columns if col.startswith("rai:")]
+    rest = [col for col in columns if col not in internal + tortilla + stac + rai + ["geometry"]]
+    columns = internal + tortilla + stac + rai + rest + ["geometry"]
+    geometadata = geometadata[columns]
+
+    return geometadata

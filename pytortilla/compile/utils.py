@@ -73,3 +73,22 @@ def build_simplified_range_header(df: pd.DataFrame) -> Dict[str, str]:
     headers = {"Range": range_header}
 
     return headers
+
+def human2bytes(size_str: str) -> int:
+    """
+    Converts a human-readable size string (e.g., "100MB") into bytes.
+    Supported units: KB, MB, GB, TB, PB.
+    """
+    units = {"KB": 10**3, "MB": 10**6, "GB": 10**9, "TB": 10**12, "PB": 10**15}
+    size_str = size_str.strip().upper()
+
+    for unit, multiplier in units.items():
+        if size_str.endswith(unit):
+            try:
+                value = float(size_str[: -len(unit)].strip())
+                return int(value * multiplier)
+            except ValueError:
+                raise ValueError(f"Invalid size value in '{size_str}'.")
+    raise ValueError(
+        f"Unsupported unit in '{size_str}'. Supported units are: {', '.join(units.keys())}."
+    )

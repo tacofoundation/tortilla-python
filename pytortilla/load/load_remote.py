@@ -43,9 +43,9 @@ def file2metadata(file: str) -> pd.DataFrame:
         metadata = pq.read_table(pa.BufferReader(response.content)).to_pandas()
 
     # Add the file format and mode
-    metadata["tortilla:file_format"] = DF
-    metadata["tortilla:mode"] = "online"
-    metadata["tortilla:subfile"] = metadata.apply(
+    metadata["internal:file_format"] = DF
+    metadata["internal:mode"] = "online"
+    metadata["internal:subfile"] = metadata.apply(
         lambda row: f"/vsisubfile/{row['tortilla:offset']}_{row['tortilla:length']},/vsicurl/{file}",
         axis=1,
     )
@@ -94,9 +94,9 @@ def files2metadata(files: List[str]) -> pd.DataFrame:
             metadata = pq.read_table(pa.BufferReader(response.content)).to_pandas()
 
         # Add the file format and mode
-        metadata["tortilla:file_format"] = DF
-        metadata["tortilla:mode"] = "online"
-        metadata["tortilla:subfile"] = metadata.apply(
+        metadata["internal:file_format"] = DF
+        metadata["internal:mode"] = "online"
+        metadata["internal:subfile"] = metadata.apply(
             lambda row: f"/vsisubfile/{row['tortilla:offset']}_{row['tortilla:length']},/vsicurl/{file}",
             axis=1,
         )

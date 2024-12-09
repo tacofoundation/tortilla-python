@@ -41,9 +41,9 @@ def file2metadata(file: Union[str, pathlib.Path]):
         metadata = pq.read_table(pa.BufferReader(f.read(footer_length))).to_pandas()
 
         # Convert dataset to DataFrame
-        metadata["tortilla:file_format"] = DF
-        metadata["tortilla:mode"] = "local"
-        metadata["tortilla:subfile"] = metadata.apply(
+        metadata["internal:file_format"] = DF
+        metadata["internal:mode"] = "local"
+        metadata["internal:subfile"] = metadata.apply(
             lambda row: f"/vsisubfile/{row['tortilla:offset']}_{row['tortilla:length']},{file}",
             axis=1,
         )
@@ -90,9 +90,9 @@ def files2metadata(files: Union[List[str], List[pathlib.Path]]):
             metadata = pq.read_table(pa.BufferReader(f.read(footer_length))).to_pandas()
 
             # Convert dataset to DataFrame
-            metadata["tortilla:file_format"] = DF
-            metadata["tortilla:mode"] = "local"
-            metadata["tortilla:subfile"] = metadata.apply(
+            metadata["internal:file_format"] = DF
+            metadata["internal:mode"] = "local"
+            metadata["internal:subfile"] = metadata.apply(
                 lambda row: f"/vsisubfile/{row['tortilla:offset']}_{row['tortilla:length']},{file}",
                 axis=1,
             )

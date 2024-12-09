@@ -10,18 +10,17 @@ import pyarrow.parquet as pq
 import requests
 import tqdm
 
-from ..load.main import load
-from .utils import build_simplified_range_header, tortilla_message
+from .utils import build_simplified_range_header, tortilla_message, human2bytes
 
 
 def compile(
     metadata: pd.DataFrame,
     output: Union[str, pathlib.Path],
-    chunk_size_iter: int = 1024 * 1024 * 100,
+    chunk_size_iter: str = "100MB",
     nworkers: int = 4,
-    force: bool = False,
+    overwrite: bool = True,
     quiet: bool = False,
-) -> pd.DataFrame:
+) -> pathlib.Path:
     """Select a subset of a Tortilla file and write a new "small" Tortilla file.
 
     Args:
@@ -32,20 +31,25 @@ def compile(
             it is 100MB. Faster computers can use a larger chunk size.
         nworkers (int, optional): The number of workers to use when writing
             the tortilla. Defaults to 4.
-        force (bool, optional): If True, the function overwrites the file if it
-            already exists. By default, it is False.
+        overwrite (bool, optional): If True, the function overwrites the file if it
+            already exists. By default, it is True.
         quiet (bool, optional): If True, the function does not print any
             message. By default, it is False.
     Returns:
-        pd.DataFrame: The metadata of the new Tortilla file.
+        pathlib.Path: The path to the new Tortilla file.
     """
+    # Keep the data format
+    data_format: str = metadata["internal:file_format"].iloc[0]
+
+    # From human-readable to bytes
+    chunk_size_iter: int = human2bytes(chunk_size_iter)
 
     # If the folder does not exist, create it
     output = pathlib.Path(output)
     output.parent.mkdir(parents=True, exist_ok=True)
 
     # Check if the file already exists
-    if output.exists() and force:
+    if output.exists() and overwrite:
         output.unlink()
 
     # Remove the index from the previous dataset
@@ -54,40 +58,55 @@ def compile(
     metadata.reset_index(drop=True, inplace=True)
 
     # Compile your tortilla
-    if metadata["tortilla:mode"].iloc[0] == "local":
-        compile_local(metadata, output, chunk_size_iter, nworkers, quiet)
+    mode = metadata["internal:mode"].iloc[0]
+    if mode == "local":
+        compile_local(metadata, output, chunk_size_iter, nworkers, data_format, quiet)
+    elif mode == "online":
+        compile_online(metadata, output, chunk_size_iter, data_format, quiet)
+    else:
+        raise ValueError(f"Unknown mode: {mode}")
 
-    if metadata["tortilla:mode"].iloc[0] == "online":
-        compile_online(metadata, output, chunk_size_iter, quiet)
-
-    return load(output)
+    return output
 
 
 def compile_local(
-    dataset: pd.DataFrame, output: str, chunk_size_iter: int, nworkers: int, quiet: bool
+    metadata: pd.DataFrame,
+    output: str,
+    chunk_size_iter: int,
+    nworkers: int,
+    data_format: str,
+    quiet: bool
 ) -> pathlib.Path:
     """Prepare a subset of a local Tortilla file and write it to a new file.
 
     Args:
-        dataset (pd.DataFrame): The metadata of the Tortilla file.
+        metadata (pd.DataFrame): The metadata of a Tortilla file.
         output (str): The path to the Tortilla file.
         chunk_size_iter (int): The size of the chunks to use when writing
             the tortilla.
+        nworkers (int): The number of workers to use when writing the tortilla.        
+        data_format (str): The format of the data.
+        quiet (bool): Whether to suppress the progress bar.
 
     Returns:
         pathlib.Path: The path to the new Tortilla file.
     """
-    # Get the name of the file
-    file = dataset["tortilla:subfile"].iloc[0].split(",")[-1]
-
+    
     # Estimate the new offset
-    dataset.loc[:, "tortilla:new_offset"] = (
-        dataset["tortilla:length"].shift(1, fill_value=0).cumsum() + 200
+    metadata.loc[:, "tortilla:new_offset"] = (
+        metadata["tortilla:length"].shift(1, fill_value=0).cumsum() + 200
     )
 
     # Create the new FOOTER
-    new_footer = dataset[["tortilla:id", "tortilla:new_offset", "tortilla:length"]]
-    new_footer.columns = ["tortilla:id", "tortilla:offset", "tortilla:length"]
+    # Remove the columns generated on-the-fly by the load function (internal fields)
+    new_footer = metadata.copy()
+    new_footer.drop(
+        columns=[
+            "geometry", "internal:mode", "internal:file_format", "internal:subfile", "tortilla:offset"
+        ],
+        inplace=True
+    )
+    new_footer.rename(columns={"tortilla:new_offset": "tortilla:offset"}, inplace=True)  
 
     # Create an in-memory Parquet file with BufferOutputStream
     with pa.BufferOutputStream() as sink:
@@ -103,18 +122,20 @@ def compile_local(
         FOOTER: bytes = sink.getvalue().to_pybytes()
 
     # Calculate the bytes of the data blob (DATA)
-    bytes_counter: int = sum(dataset["tortilla:length"])
+    bytes_counter: int = (
+        metadata.iloc[-1]["tortilla:new_offset"] + metadata.iloc[-1]["tortilla:length"]
+    )
 
     # Prepare the static bytes
     MB: bytes = b"#y"
     FL: bytes = len(FOOTER).to_bytes(8, "little")
-    FO: bytes = (200 + bytes_counter).to_bytes(8, "little")
-    DF: bytes = dataset["tortilla:file_format"].iloc[0].encode().ljust(24)
+    FO: bytes = int(bytes_counter).to_bytes(8, "little")
+    DF: bytes = data_format.encode().ljust(24)
     DP: bytes = int(1).to_bytes(8, "little")
 
     # Create the tortilla file (empty)
     with open(output, "wb") as f:
-        f.truncate(200 + bytes_counter + len(FOOTER))
+        f.truncate(bytes_counter + len(FOOTER))
 
     # Define the function to write into the main file
     def write_file(file, old_offset, length, new_offset):
@@ -164,10 +185,11 @@ def compile_local(
                 max_workers=nworkers
             ) as executor:
                 futures = []
-                for _, item in dataset.iterrows():
+                for _, item in metadata.iterrows():
                     old_offset = item["tortilla:offset"]
                     new_offset = item["tortilla:new_offset"]
                     length = item["tortilla:length"]
+                    file = metadata["internal:subfile"].iloc[0].split(",")[-1]
                     futures.append(
                         executor.submit(
                             write_file, file, old_offset, length, new_offset
@@ -188,21 +210,26 @@ def compile_local(
                     concurrent.futures.wait(futures)
 
             # Write the FOOTER
-            mm[(200 + bytes_counter) :] = FOOTER
+            mm[bytes_counter:(bytes_counter + len(FOOTER))] = FOOTER
 
     return pathlib.Path(output)
 
 
 def compile_online(
-    dataset: pd.DataFrame, output: str, chunk_size_iter: int, quiet: bool
+    metadata: pd.DataFrame,
+    output: str,
+    chunk_size_iter: int,
+    data_format: str,
+    quiet: bool
 ) -> pathlib.Path:
     """Prepare a subset of an online Tortilla file and write it to a new local file.
 
     Args:
-        dataset (pd.DataFrame): The metadata of the Tortilla file.
+        metadata (pd.DataFrame): The metadata of the Tortilla file.
         output (str): The path to the Tortilla file.
-        chunk_size_iter (int): The size of the chunks to use when writing
+        chunk_size_iter (int, optional): The size of the chunks to use when writing
             the tortilla.
+        data_format (str): The format of the data.
         quiet (bool): Whether to suppress the progress bar.
 
     Returns:
@@ -211,16 +238,21 @@ def compile_online(
 
     # Get the URL of the file
     url_pattern = r"(ftp|https?)://[^\s,]+"
-    url = re.search(url_pattern, dataset["tortilla:subfile"].iloc[0]).group(0)
+    url = re.search(url_pattern, metadata["internal:subfile"].iloc[0]).group(0)
 
     # Calculate the new offsets
-    dataset["tortilla:new_offset"] = (
-        dataset["tortilla:length"].shift(1, fill_value=0).cumsum() + 200
+    metadata["tortilla:new_offset"] = (
+        metadata["tortilla:length"].shift(1, fill_value=0).cumsum() + 200
     )
 
     # Create the new FOOTER
-    new_footer = dataset[["tortilla:id", "tortilla:new_offset", "tortilla:length"]]
-    new_footer.columns = ["tortilla:id", "tortilla:offset", "tortilla:length"]
+    # Remove the columns generated on-the-fly by the load function
+    new_footer = metadata.copy()
+    new_footer.drop(
+        columns=["geometry", "internal:mode", "internal:file_format", "internal:subfile", "tortilla:offset"],
+        inplace=True
+    )
+    new_footer.rename(columns={"tortilla:new_offset": "tortilla:offset"}, inplace=True)
 
     # Create an in-memory Parquet file with BufferOutputStream
     with pa.BufferOutputStream() as sink:
@@ -236,20 +268,22 @@ def compile_online(
         FOOTER: bytes = sink.getvalue().to_pybytes()
 
     # Calculate the total size of the data
-    total_bytes: int = sum(dataset["tortilla:length"])
+    total_bytes: int = (
+        metadata.iloc[-1]["tortilla:new_offset"] + metadata.iloc[-1]["tortilla:length"]
+    )
 
     # Prepare static bytes
     MB: bytes = b"#y"
     FL: bytes = len(FOOTER).to_bytes(8, "little")
-    FO: bytes = (200 + total_bytes).to_bytes(8, "little")
-    DF: bytes = dataset["tortilla:file_format"].iloc[0].encode().ljust(24)
+    FO: bytes = int(total_bytes).to_bytes(8, "little")
+    DF: bytes = data_format.encode().ljust(24)
     DP: bytes = int(1).to_bytes(8, "little")
 
     # Get checksum
-    checksum: int = 200 + total_bytes + len(FOOTER)
+    checksum: int = total_bytes + len(FOOTER)
 
-    # Build range headers
-    headers = build_simplified_range_header(dataset)
+    # Merge multiple ranges into a single range header
+    headers = build_simplified_range_header(metadata)
 
     # Check if the file exists and determine the download start point
     start = 200
