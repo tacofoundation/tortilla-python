@@ -15,14 +15,23 @@ class STAC(pydantic.BaseModel):
     raster_shape: tuple[int, int]
     geotransform: tuple[float, float, float, float, float, float]
     centroid: Optional[str] = None
-    time_start: datetime.datetime
-    time_end: Optional[datetime.datetime] = None
+    time_start: Union[datetime.datetime, int]
+    time_end: Optional[Union[datetime.datetime, int]] = None
 
     @pydantic.model_validator(mode="after")
     def check_times(cls, values):
         """Validates that the time_start is before time_end."""
         if values.time_start > values.time_end:
             raise ValueError(f"Invalid times: {values.time_start} > {values.time_end}")
+        
+        # If time_start is a datetime object, convert it to a timestamp
+        if isinstance(values.time_start, datetime.datetime):
+            values.time_start = values.time_start.timestamp()
+
+        # If time_end is a datetime object, convert it to a timestamp
+        if values.time_end is not None:
+            if isinstance(values.time_end, datetime.datetime):
+                values.time_end = values.time_end.timestamp()
 
         return values
 
