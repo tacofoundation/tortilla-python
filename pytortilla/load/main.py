@@ -46,20 +46,19 @@ def load(file: Union[str, pathlib.Path, List[pathlib.Path], List[str]]) -> pd.Da
         raise ValueError("Invalid file type. Must be a list, string or pathlib.Path.")
 
     # Convert the DataFrame to a GeoDataFrame
-    geometadata = gpd.GeoDataFrame(
-        data=metadata,
-        geometry=metadata["stac:centroid"].apply(shapely.wkt.loads),
-        crs="EPSG:4326"
-    )
+    if "stac:centroid" in metadata.columns:
+        metadata = gpd.GeoDataFrame(
+            data=metadata,
+            geometry=metadata["stac:centroid"].apply(shapely.wkt.loads),
+            crs="EPSG:4326"
+        )
 
     # Sort the columns
-    columns = geometadata.columns
-    internal = [col for col in columns if col.startswith("internal:")]
-    tortilla = [col for col in columns if col.startswith("tortilla:")]
-    stac = [col for col in columns if col.startswith("stac:")]
-    rai = [col for col in columns if col.startswith("rai:")]
-    rest = [col for col in columns if col not in internal + tortilla + stac + rai + ["geometry"]]
-    columns = internal + tortilla + stac + rai + rest + ["geometry"]
-    geometadata = geometadata[columns]
+    columns = metadata.columns
+    prefixes = ["internal:", "tortilla:", "stac:", "rai:"]
+    sorted_columns = [col for prefix in prefixes for col in columns if col.startswith(prefix)]
+    rest = [col for col in columns if col not in sorted_columns and col != "geometry"]
+    columns = sorted_columns + rest + (["geometry"] if "geometry" in columns else [])
+    metadata = metadata[columns]
 
-    return geometadata
+    return metadata

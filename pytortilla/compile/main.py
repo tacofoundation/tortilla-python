@@ -104,6 +104,7 @@ def compile_local(
         columns=[
             "geometry", "internal:mode", "internal:file_format", "internal:subfile", "tortilla:offset"
         ],
+        errors="ignore",
         inplace=True
     )
     new_footer.rename(columns={"tortilla:new_offset": "tortilla:offset"}, inplace=True)  
@@ -250,6 +251,7 @@ def compile_online(
     new_footer = metadata.copy()
     new_footer.drop(
         columns=["geometry", "internal:mode", "internal:file_format", "internal:subfile", "tortilla:offset"],
+        errors="ignore",
         inplace=True
     )
     new_footer.rename(columns={"tortilla:new_offset": "tortilla:offset"}, inplace=True)
