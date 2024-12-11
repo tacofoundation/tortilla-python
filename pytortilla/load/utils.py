@@ -2,6 +2,8 @@ import pathlib
 import re
 import urllib
 from typing import List, Tuple, Union
+import geopandas as gpd
+import shapely.wkt
 
 import requests
 
@@ -130,3 +132,29 @@ def snippet2files(
             files = file
 
     return files
+
+
+def sort_columns_add_geometry(metadata):
+    """Sort the columns of a metadata DataFrame.
+    Also, convert the "stac:centroid" column to a geometry column.
+
+    Args:
+        metadata (pd.DataFrame): The metadata DataFrame.
+
+    Returns:
+        pd.DataFrame: The metadata DataFrame with sorted columns.
+    """
+    if "stac:centroid" in metadata.columns:
+        metadata = gpd.GeoDataFrame(
+            data=metadata,
+            geometry=metadata["stac:centroid"].apply(shapely.wkt.loads),
+            crs="EPSG:4326"
+        )    
+    columns = metadata.columns
+    prefixes = ["internal:", "tortilla:", "stac:", "rai:"]
+    sorted_columns = [
+        col for prefix in prefixes for col in columns if col.startswith(prefix)
+    ]
+    rest = [col for col in columns if col not in sorted_columns and col != "geometry"]
+    columns = sorted_columns + rest + (["geometry"] if "geometry" in columns else [])
+    return metadata[columns]

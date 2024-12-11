@@ -21,9 +21,6 @@ class STAC(pydantic.BaseModel):
     @pydantic.model_validator(mode="after")
     def check_times(cls, values):
         """Validates that the time_start is before time_end."""
-        if values.time_start > values.time_end:
-            raise ValueError(f"Invalid times: {values.time_start} > {values.time_end}")
-        
         # If time_start is a datetime object, convert it to a timestamp
         if isinstance(values.time_start, datetime.datetime):
             values.time_start = values.time_start.timestamp()
@@ -32,6 +29,9 @@ class STAC(pydantic.BaseModel):
         if values.time_end is not None:
             if isinstance(values.time_end, datetime.datetime):
                 values.time_end = values.time_end.timestamp()
+
+            if values.time_start > values.time_end:
+                raise ValueError(f"Invalid times: {values.time_start} > {values.time_end}")
 
         return values
 

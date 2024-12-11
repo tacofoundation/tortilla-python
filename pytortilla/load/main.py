@@ -1,16 +1,17 @@
+import re
 import pathlib
 from typing import List, Union
 
 import pandas as pd
-import geopandas as gpd
-import shapely.wkt
+import requests
 
 from .load_local import file2metadata as local_file2metadata
 from .load_local import files2metadata as local_files2metadata
+from .load_local import lazyfile2metadata as lazy_local_file2metadata
 from .load_remote import file2metadata as remote_file2metadata
 from .load_remote import files2metadata as remote_files2metadata
-from .utils import is_valid_url, snippet2files
-
+from .load_remote import lazyfile2metadata as lazy_remote_file2metadata
+from .utils import is_valid_url, snippet2files, sort_columns_add_geometry
 
 def load(file: Union[str, pathlib.Path, List[pathlib.Path], List[str]]) -> pd.DataFrame:
     """Load the metadata of a tortilla file.
@@ -45,20 +46,71 @@ def load(file: Union[str, pathlib.Path, List[pathlib.Path], List[str]]) -> pd.Da
     else:
         raise ValueError("Invalid file type. Must be a list, string or pathlib.Path.")
 
-    # Convert the DataFrame to a GeoDataFrame
-    if "stac:centroid" in metadata.columns:
-        metadata = gpd.GeoDataFrame(
-            data=metadata,
-            geometry=metadata["stac:centroid"].apply(shapely.wkt.loads),
-            crs="EPSG:4326"
-        )
+    # Clean up the metadata
+    metadata = sort_columns_add_geometry(metadata)
 
-    # Sort the columns
-    columns = metadata.columns
-    prefixes = ["internal:", "tortilla:", "stac:", "rai:"]
-    sorted_columns = [col for prefix in prefixes for col in columns if col.startswith(prefix)]
-    rest = [col for col in columns if col not in sorted_columns and col != "geometry"]
-    columns = sorted_columns + rest + (["geometry"] if "geometry" in columns else [])
-    metadata = metadata[columns]
+    return TortillaDataFrame(metadata)
 
-    return metadata
+
+def lazy_load(offset: int, file: Union[str, pathlib.Path]) -> pd.DataFrame:
+    """ Lazy load a tortilla file.
+
+    Useful for datasets that have tortillas as samples (tortillas inside tortillas).
+    The offset is used to read a specific part of the main tortilla file.
+    
+    Args:
+        offset (int): The byte offset where the reading process will start.        
+        file (Union[str, pathlib.Path]): The path tot the main tortilla file.
+
+    Returns:
+        pd.DataFrame: The metadata of the tortilla file.
+    """
+    
+    if is_valid_url(file):
+        metadata = lazy_remote_file2metadata(offset, file)
+    else:
+        metadata = lazy_local_file2metadata(offset, file)
+
+    # Clean up the metadata
+    metadata = sort_columns_add_geometry(metadata)
+
+    return TortillaDataFrame(metadata)
+    
+
+class TortillaDataFrame(pd.DataFrame):
+    @property
+    def _constructor(self):
+        return TortillaDataFrame
+
+    @staticmethod
+    def get_internal_path(row):
+        pattern: re.Pattern = re.compile(r"/vsisubfile/(\d+)_(\d+),(.+)")
+        offset, length, path = pattern.match(row["internal:subfile"]).groups()
+        
+        # If it is a curl file, remove the first 9 characters
+        if path.startswith('/vsicurl/'):
+            path = path[9:]
+        
+        return int(offset), int(length), path
+
+    def read(self, idx):
+        row = self.iloc[idx]        
+        if row["internal:file_format"] == "TORTILLA":
+            offset, length, path = self.get_internal_path(row)
+            return lazy_load(row["tortilla:offset"], path)
+        elif row["internal:file_format"] == "BYTES":
+            
+            # Obtain the offset, length and internal path
+            offset, length, path = self.get_internal_path(row)
+            
+            # Get the bytes
+            if is_valid_url(path):
+                headers = {"Range": f"bytes={offset}-{offset + length - 1}"}
+                response: requests.Response = requests.get(path, headers=headers)
+                return response.content
+            else:
+                with open(path, "rb") as f:
+                    f.seek(int(offset))
+                    return f.read(int(length))
+        else:
+            return row["internal:subfile"]
