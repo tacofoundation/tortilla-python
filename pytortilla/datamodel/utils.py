@@ -1,4 +1,5 @@
 from typing import Literal, Tuple
+
 from pyproj import CRS, Transformer
 
 
@@ -12,7 +13,7 @@ def raster_centroid(
 
     Args:
         crs (str): The raster's Coordinate Reference System (e.g., "EPSG:32633").
-        geotransform (Tuple[float, float, float, float, float, float]): The 
+        geotransform (Tuple[float, float, float, float, float, float]): The
             geotransform of the raster following the GDAL convention:
             (
                 top left x,
@@ -21,7 +22,7 @@ def raster_centroid(
                 top left y,
                 y rotation,
                 y resolution
-            )            
+            )
         raster_shape (Tuple[int, int]): The shape of the raster as (rows, columns).
 
     Returns:

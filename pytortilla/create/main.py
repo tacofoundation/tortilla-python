@@ -9,8 +9,10 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import tqdm
 
-from ..datamodel.main import Samples
-from .utils import group_dataframe_by_size, human2bytes, tortilla_message
+from pytortilla.create import utils
+from pytortilla.datamodel.main import Samples
+
+# group_dataframe_by_size, human2bytes, tortilla_message
 
 
 def create(
@@ -57,11 +59,11 @@ def create(
     metadata: pd.DataFrame = samples.export_metadata()
 
     # From human-readable to bytes
-    chunk_size_iter_bytes: int = human2bytes(chunk_size_iter)
-    chunk_size_bytes: int = human2bytes(chunk_size)
+    chunk_size_iter_bytes: int = utils.human2bytes(chunk_size_iter)
+    chunk_size_bytes: int = utils.human2bytes(chunk_size)
 
     # Aggregate metadata into groups
-    metadata_groups: List[pd.DataFrame] = group_dataframe_by_size(
+    metadata_groups: List[pd.DataFrame] = utils.group_dataframe_by_size(
         metadata=metadata, chunk_size=chunk_size_bytes
     )
 
@@ -185,7 +187,7 @@ def create_a_tortilla(
             mm[50:200] = b"\0" * 150
 
             # Write the DATA pile
-            message = tortilla_message()
+            message = utils.tortilla_message()
             with concurrent.futures.ThreadPoolExecutor(
                 max_workers=nworkers
             ) as executor:
@@ -213,6 +215,6 @@ def create_a_tortilla(
                     concurrent.futures.wait(futures)
 
             # Write the FOOTER
-            mm[bytes_counter:(bytes_counter + len(FOOTER))] = FOOTER
+            mm[bytes_counter : (bytes_counter + len(FOOTER))] = FOOTER
 
     return output

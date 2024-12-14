@@ -5,7 +5,7 @@ from typing import Optional, Union
 import pandas as pd
 import pydantic
 
-from .utils import GDAL_FILES, raster_centroid
+from pytortilla.datamodel import utils
 
 
 class STAC(pydantic.BaseModel):
@@ -31,7 +31,9 @@ class STAC(pydantic.BaseModel):
                 values.time_end = values.time_end.timestamp()
 
             if values.time_start > values.time_end:
-                raise ValueError(f"Invalid times: {values.time_start} > {values.time_end}")
+                raise ValueError(
+                    f"Invalid times: {values.time_start} > {values.time_end}"
+                )
 
         return values
 
@@ -84,10 +86,10 @@ class Sample(pydantic.BaseModel):
                     and self.stac_data.geotransform is not None
                     and self.stac_data.raster_shape is not None
                 ):
-                    self.stac_data.centroid = raster_centroid(
+                    self.stac_data.centroid = utils.raster_centroid(
                         crs=self.stac_data.crs,
                         geotransform=self.stac_data.geotransform,
-                        raster_shape=self.stac_data.raster_shape
+                        raster_shape=self.stac_data.raster_shape,
                     )
 
         # Merge all metadata into a single dictionary
@@ -97,17 +99,35 @@ class Sample(pydantic.BaseModel):
             "tortilla:offset": 0,
             "tortilla:length": self.path.stat().st_size,
             "stac:crs": self.stac_data.crs if self.stac_data is not None else None,
-            "stac:geotransform": self.stac_data.geotransform if self.stac_data is not None else None,
-            "stac:raster_shape": self.stac_data.raster_shape if self.stac_data is not None else None,
-            "stac:time_start": self.stac_data.time_start if self.stac_data is not None else None,
-            "stac:time_end": self.stac_data.time_end if self.stac_data is not None else None,
-            "stac:centroid": self.stac_data.centroid if self.stac_data is not None else None,
-            "rai:populationdensity": self.rai_data.populationdensity if self.rai_data is not None else None,
+            "stac:geotransform": (
+                self.stac_data.geotransform if self.stac_data is not None else None
+            ),
+            "stac:raster_shape": (
+                self.stac_data.raster_shape if self.stac_data is not None else None
+            ),
+            "stac:time_start": (
+                self.stac_data.time_start if self.stac_data is not None else None
+            ),
+            "stac:time_end": (
+                self.stac_data.time_end if self.stac_data is not None else None
+            ),
+            "stac:centroid": (
+                self.stac_data.centroid if self.stac_data is not None else None
+            ),
+            "rai:populationdensity": (
+                self.rai_data.populationdensity if self.rai_data is not None else None
+            ),
             "rai:female": self.rai_data.female if self.rai_data is not None else None,
-            "rai:womenreproducibleage": self.rai_data.womenreproducibleage if self.rai_data is not None else None,
-            "rai:children": self.rai_data.children if self.rai_data is not None else None,
+            "rai:womenreproducibleage": (
+                self.rai_data.womenreproducibleage
+                if self.rai_data is not None
+                else None
+            ),
+            "rai:children": (
+                self.rai_data.children if self.rai_data is not None else None
+            ),
             "rai:youth": self.rai_data.youth if self.rai_data is not None else None,
-            "rai:elderly": self.rai_data.elderly if self.rai_data is not None else None
+            "rai:elderly": self.rai_data.elderly if self.rai_data is not None else None,
         }
 
         # Remove None values
@@ -118,7 +138,7 @@ class Sample(pydantic.BaseModel):
 
 class Samples(pydantic.BaseModel):
     samples: list[Sample]
-    file_format: GDAL_FILES
+    file_format: utils.GDAL_FILES
 
     @pydantic.model_validator(mode="after")
     def check_samples(cls, values):
