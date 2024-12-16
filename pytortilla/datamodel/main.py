@@ -53,6 +53,7 @@ class Sample(pydantic.BaseModel):
     """A sample with STAC and RAI metadata."""
 
     id: str
+    file_format: utils.GDAL_FILES
     path: pathlib.Path
     stac_data: Optional[STAC] = None
     rai_data: Optional[RAI] = None
@@ -96,6 +97,7 @@ class Sample(pydantic.BaseModel):
         metadata = {
             "internal:path": self.path.resolve().as_posix(),
             "tortilla:id": self.id,
+            "tortilla:file_format": self.file_format,
             "tortilla:offset": 0,
             "tortilla:length": self.path.stat().st_size,
             "stac:crs": self.stac_data.crs if self.stac_data is not None else None,
@@ -138,13 +140,12 @@ class Sample(pydantic.BaseModel):
 
 class Samples(pydantic.BaseModel):
     samples: list[Sample]
-    file_format: utils.GDAL_FILES
 
     @pydantic.model_validator(mode="after")
     def check_samples(cls, values):
         """
         Validates that the samples have unique IDs.
-        """
+        """        
         ids = [sample.id for sample in values.samples]
         if len(ids) != len(set(ids)):
             raise ValueError("The samples must have unique IDs.")

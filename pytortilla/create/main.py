@@ -2,7 +2,7 @@ import concurrent.futures
 import mmap
 import os
 import pathlib
-from typing import List, Union
+from typing import List, Union, Callable
 
 import pandas as pd
 import pyarrow as pa
@@ -12,8 +12,6 @@ import tqdm
 from pytortilla.create import utils
 from pytortilla.datamodel.main import Samples
 
-# group_dataframe_by_size, human2bytes, tortilla_message
-
 
 def create(
     samples: Samples,
@@ -21,27 +19,35 @@ def create(
     nworkers: int = min(4, os.cpu_count()),
     chunk_size: str = "20GB",
     chunk_size_iter: str = "100MB",
-    quiet: bool = False,
+    tortilla_message: Callable[[], str] = utils.tortilla_message,
+    quiet: bool = False
 ) -> Union[pathlib.Path, List[pathlib.Path]]:
     """Create a tortilla 🫓
 
-    A tortilla is a new simple format for storing same format files
-    optimized for very fast random access.
+    A tortilla is a new simple format for storing files
+    optimized for partial & very fast random access.
 
     Args:
         samples (Samples): The list of samples to be included in
-            the tortilla file. All samples must have the same format
-            (same extension). The Sample objects must have a unique
+            the tortilla file. The Sample objects must have a unique
             `id` field.
         output (Union[str, pathlib.Path]): The path where the tortilla
             file will be saved.
         nworkers (int, optional): The number of workers to use when writing
-            the tortilla. Defaults to 4.
+            the tortilla. Defaults to 4. As the writing process is I/O bound,
+            the number of workers should be significantly lower than the number
+            of cores in the machine.
         chunk_size (str, optional): Avoid large tortilla files by splitting
             the data into chunks. By default, if the number of samples exceeds
-            20GB, the data will be split into chunks of 20GB.
+            20GB, the data will be split into chunks of 20GB. The partitions
+            can be read independently, as each partition contains the metadata
+            of the samples it contains.
         chunk_size_iter (int, optional): The writting chunk size. By default,
             it is 100MB. Faster computers can use a larger chunk size.
+        tortilla_message (Callable[[], str], optional): A function that 
+            returns the message to be displayed when creating the tortilla.
+            By default, it is utils.tortilla_message which returns a random
+            message.
         quiet (bool, optional): If True, the function does not print any
             message. By default, it is False.
 
@@ -73,23 +79,24 @@ def create(
             metadata=metadata_groups[0],
             output=output,
             ndatapartitions=1,
-            file_format=samples.file_format,
             nworkers=nworkers,
             chunk_size_iter_bytes=chunk_size_iter_bytes,
+            tortilla_message=tortilla_message,
             quiet=quiet,
         )
 
     # Save the tortilla in parts
     paths = []
     for idx, metadata in enumerate(metadata_groups):
+        output_suffix: str = output.suffix
         paths.append(
             create_a_tortilla(
                 metadata=metadata,
-                output=output.with_suffix(f".{str(idx).zfill(4)}.part.tortilla"),
+                output=output.with_suffix(f".{str(idx).zfill(4)}.part{output_suffix}"),
                 ndatapartitions=len(metadata_groups),
-                file_format=samples.file_format,
                 nworkers=nworkers,
                 chunk_size_iter_bytes=chunk_size_iter_bytes,
+                tortilla_message=tortilla_message,
                 quiet=quiet,
             )
         )
@@ -100,14 +107,15 @@ def create_a_tortilla(
     metadata: pd.DataFrame,
     output: Union[str, pathlib.Path],
     ndatapartitions: int,
-    file_format: str,
     nworkers: int,
     chunk_size_iter_bytes: int,
+    tortilla_message: Callable[[], str],
     quiet: bool = False,
 ) -> pathlib.Path:
     """Create a SINGLE tortilla file 🫓"""
 
-    # Define the magic number
+    # Set the Magic Number (MB)
+    # Don't forget 3.oct.11
     MB: bytes = b"#y"
 
     # Estimate the new offset
@@ -120,8 +128,8 @@ def create_a_tortilla(
         metadata.iloc[-1]["tortilla:length"] + metadata.iloc[-1]["tortilla:offset"]
     )
 
-    # Drop the internal path
-    internal_path = metadata["internal:path"].tolist()
+    # Drop the internal:path field (the paths to the original files)
+    internal_path: List[str] = metadata["internal:path"].tolist()
     metadata.drop(columns=["internal:path"], inplace=True)
 
     # Create an in-memory Parquet file with BufferOutputStream
@@ -134,15 +142,12 @@ def create_a_tortilla(
             use_dictionary=False,  # Optimizes for repeated values
         )
         # return a blob of the in-memory Parquet file as bytes
-        # Obtain the FOOTER metadata
+        # This is the FOOTER metadata
         FOOTER: bytes = sink.getvalue().to_pybytes()
 
     # Define the FOOTER length and offset
     FL: bytes = len(FOOTER).to_bytes(8, "little")
     FO: bytes = int(bytes_counter).to_bytes(8, "little")
-
-    # Data Format of items
-    DF: int = file_format.encode().ljust(24)
 
     # Get the total size of the files
     total_size: int = len(FOOTER) + bytes_counter
@@ -167,7 +172,7 @@ def create_a_tortilla(
 
     # Cook the tortilla 🫓
     with open(output, "r+b") as f:
-        with mmap.mmap(f.fileno(), 0) as mm:
+        with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_WRITE) as mm:
             # Write the magic number (MB)
             mm[:2] = MB
 
@@ -177,17 +182,14 @@ def create_a_tortilla(
             # Write the FOOTER length (FL)
             mm[10:18] = FL
 
-            # Write the DATA format (DF)
-            mm[18:42] = DF
-
             # Write the number of data partitions (DP)
-            mm[42:50] = ndatapartitions.to_bytes(8, "little")
+            mm[18:26] = ndatapartitions.to_bytes(8, "little")
 
             # Write the free space (FP)
-            mm[50:200] = b"\0" * 150
+            mm[26:200] = b"\0" * 174
 
             # Write the DATA pile
-            message = utils.tortilla_message()
+            message = tortilla_message()
             with concurrent.futures.ThreadPoolExecutor(
                 max_workers=nworkers
             ) as executor:
