@@ -1,6 +1,6 @@
 import datetime
 import pathlib
-from typing import Optional, Union
+from typing import Optional, Union, Literal
 
 import pandas as pd
 import pydantic
@@ -55,6 +55,7 @@ class Sample(pydantic.BaseModel):
     id: str
     file_format: utils.GDAL_FILES
     path: pathlib.Path
+    data_split: Optional[Literal["train", "val", "test"]] = None 
     stac_data: Optional[STAC] = None
     rai_data: Optional[RAI] = None
 
@@ -76,7 +77,8 @@ class Sample(pydantic.BaseModel):
         """
         # Gather additional metadata (extra fields not defined explicitly)
         extra_metadata = self.model_dump(
-            exclude={"id", "path", "stac_data", "rai_data"}, by_alias=True
+            exclude={"id", "path", "stac_data", "rai_data", "file_format", "data_split"},
+            by_alias=True,
         )
 
         # If crs, raster_shape and geotransform are not provided, then create the stac:centroid
@@ -98,6 +100,7 @@ class Sample(pydantic.BaseModel):
             "internal:path": self.path.resolve().as_posix(),
             "tortilla:id": self.id,
             "tortilla:file_format": self.file_format,
+            "tortilla:data_split": self.data_split,
             "tortilla:offset": 0,
             "tortilla:length": self.path.stat().st_size,
             "stac:crs": self.stac_data.crs if self.stac_data is not None else None,
