@@ -55,7 +55,7 @@ class Sample(pydantic.BaseModel):
     id: str
     file_format: utils.GDAL_FILES
     path: pathlib.Path
-    data_split: Optional[Literal["train", "val", "test"]] = None 
+    data_split: Optional[Literal["train", "validation", "test"]] = None 
     stac_data: Optional[STAC] = None
     rai_data: Optional[RAI] = None
 
