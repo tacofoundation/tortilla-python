@@ -1,6 +1,45 @@
 from typing import Literal, Tuple
-
+from importlib.resources import files
 from pyproj import CRS, Transformer
+
+import pandas as pd
+
+GEEPRODUCTS = {
+    "ele": "projects/sat-io/open-datasets/GLO-30",
+    "cisi": "projects/sat-io/open-datasets/CISI/global_CISI",
+    "gdp": "projects/sat-io/open-datasets/GRIDDED_HDI_GDP/GDP_PPP_1990_2015_5arcmin_v2",
+    "hdi": "projects/sat-io/open-datasets/GRIDDED_HDI_GDP/HDI_1990_2015_v2",
+    "gmi": "projects/sat-io/open-datasets/GHM/ghm_v15_2017_300_60land",
+    "pop": "projects/sat-io/open-datasets/hrsl/hrslpop",
+    "admin0": "projects/ee-csaybar-real/assets/admin0",
+    "admin1": "projects/ee-csaybar-real/assets/admin1",
+    "admin2": "projects/ee-csaybar-real/assets/admin2"
+}
+
+
+def fetch_gee_metadata(image, points, reducer, scale):
+    """Fetch metadata from an Earth Engine image."""
+    data = image.reduceRegions(collection=points, reducer=reducer, scale=scale).getInfo()
+    return pd.DataFrame([d["properties"] for d in data["features"]]).fillna(0)
+
+
+def load_admin_codes():
+    """Load administrative code mapping data."""
+    base_path = files("pytortilla").joinpath("datamodel/data")
+    return {
+        level: pd.read_parquet(base_path / f"rai_admin{level}.parquet")
+        for level in ["0", "1", "2"]
+    }
+
+def map_admin_codes(admin_dfs, metadata_df):
+    """Map administrative codes to descriptive names."""
+    for level, admin_df in admin_dfs.items():
+        metadata_df = (
+            metadata_df.join(admin_df, on=f"admin_code{level}", how="left", rsuffix="_rai")
+            .drop(columns=[f"admin_code{level}", f"admin_code{level}_rai"])
+        )
+    metadata_df.columns = ["admin0", "admin1", "admin2"]
+    return metadata_df
 
 
 def raster_centroid(

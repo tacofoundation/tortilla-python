@@ -1,5 +1,5 @@
 import pytortilla.datamodel
 from pytortilla.create.main import create
 
-__version__ = "0.4.1"
+__version__ = "0.5.0-alpha"
 __all__ = ["datamodel", "create"]

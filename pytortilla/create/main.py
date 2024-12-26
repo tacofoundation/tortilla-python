@@ -62,7 +62,9 @@ def create(
     output.parent.mkdir(parents=True, exist_ok=True)
 
     # From samples to metadata
-    metadata: pd.DataFrame = samples.export_metadata()
+    if not quiet:
+        print("Reading metadata from samples...")
+    metadata: pd.DataFrame = samples.export_metadata(nworkers=nworkers, chunk_size=1000)
 
     # From human-readable to bytes
     chunk_size_iter_bytes: int = utils.human2bytes(chunk_size_iter)
