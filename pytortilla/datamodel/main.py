@@ -194,20 +194,12 @@ class Samples(pydantic.BaseModel):
         # Get the paths of the samples
         internal_paths = [sample.path for sample in self.samples]
 
-        def validate_file(file_path):
-            try:
-                read_function(file_path)
-                return None  # Return None if the file was successfully read
-            except Exception:
-                return file_path  # Return the file path if it failed
-        
-
         # Use ThreadPoolExecutor to parallelize the validation
         failed_files = []
-        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
             # Use tqdm to display progress
             for result in tqdm(
-                executor.map(validate_file, internal_paths),
+                executor.map(validate_file, internal_paths, [read_function] * len(internal_paths)),
                 total=len(internal_paths),
                 desc="Validating files",
             ):
@@ -368,3 +360,12 @@ def get_rai_metadata(
     ]
 
     return enriched_samples
+
+
+def validate_file(file_path, read_function):
+    """Validate if the file can be read by the read_function."""
+    try:
+        read_function(file_path)
+        return None  # Return None if successful
+    except Exception:
+        return file_path  # Return file path if failed
