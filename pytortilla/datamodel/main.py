@@ -270,8 +270,9 @@ def get_rai_metadata(
         print("Preparing RAI metadata process...")
     
     # 0. Set up cache path
-    cache_path = pathlib.Path("cache")
-    cache_path.mkdir(exist_ok=True, parents=True)
+    if cache:
+        cache_path = pathlib.Path("cache")
+        cache_path.mkdir(exist_ok=True, parents=True)
 
     # 1. Export metadata and chunk the database. Data is fetched in 
     # chunks of 100 samples.
@@ -304,15 +305,17 @@ def get_rai_metadata(
     # 4. Iterate over the chunks and get the metadata
     rai_metadata_container = []
     for chunk in tqdm(db_chunks, disable=quiet, desc="Fetching RAI metadata"):
+        
         ## 4.1. Get the chunk id
         chunk_id = chunk[["tortilla:id"]]
         chunk_id.reset_index(drop=True, inplace=True)
 
-        ## 4.2. If the metadata is cached, load it        
-        if chunk_id.iloc[0, 0] + ".csv" in cache_path.iterdir():
-            rai_metadata = pd.read_csv(cache_path / f"{chunk_id.iloc[0, 0]}.csv")
-            rai_metadata_container.append(rai_metadata)
-            continue
+        ## 4.2. If the metadata is cached, load it
+        if cache:
+            if (chunk_id.iloc[0, 0] + ".csv") in cache_path.iterdir():
+                rai_metadata = pd.read_csv(cache_path / f"{chunk_id.iloc[0, 0]}.csv")
+                rai_metadata_container.append(rai_metadata)
+                continue
 
         ## 4.3. Extract points
         coords = chunk["stac:centroid"].apply(lambda x: point_pattern.match(x).groups())
@@ -320,7 +323,7 @@ def get_rai_metadata(
 
         ## 4.4. Fetch metadata - returns a DataFrame with the metadata        
         rai1_df: pd.DataFrame = fetch_gee_metadata(image_mean, points, ee.Reducer.mean(), sample_footprint)
-        rai2_df: pd.DataFrame = fetch_gee_metadata(image_mode, points, ee.Reducer.mode(), sample_footprint)
+        rai2_df: pd.DataFrame = fetch_gee_metadata(image_mode, points, ee.Reducer.mode(), 556.5974539663679)
 
         ## 4.5. Map admin codes to descriptive names
         admin_metadata: pd.DataFrame = map_admin_codes(admin_codes, rai2_df)
