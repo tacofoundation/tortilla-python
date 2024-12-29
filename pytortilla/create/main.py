@@ -2,7 +2,7 @@ import concurrent.futures
 import mmap
 import os
 import pathlib
-from typing import List, Union, Callable
+from typing import Callable, List, Union
 
 import pandas as pd
 import pyarrow as pa
@@ -20,7 +20,7 @@ def create(
     chunk_size: str = "20GB",
     chunk_size_iter: str = "100MB",
     tortilla_message: Callable[[], str] = utils.tortilla_message,
-    quiet: bool = False
+    quiet: bool = False,
 ) -> Union[pathlib.Path, List[pathlib.Path]]:
     """Create a tortilla 🫓
 
@@ -44,7 +44,7 @@ def create(
             of the samples it contains.
         chunk_size_iter (int, optional): The writting chunk size. By default,
             it is 100MB. Faster computers can use a larger chunk size.
-        tortilla_message (Callable[[], str], optional): A function that 
+        tortilla_message (Callable[[], str], optional): A function that
             returns the message to be displayed when creating the tortilla.
             By default, it is utils.tortilla_message which returns a random
             message.

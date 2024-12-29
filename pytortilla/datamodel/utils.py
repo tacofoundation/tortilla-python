@@ -1,8 +1,8 @@
-from typing import Literal, Tuple
 from importlib.resources import files
-from pyproj import CRS, Transformer
+from typing import Literal, Tuple
 
 import pandas as pd
+from pyproj import CRS, Transformer
 
 GEEPRODUCTS = {
     "ele": "projects/sat-io/open-datasets/GLO-30",
@@ -13,13 +13,15 @@ GEEPRODUCTS = {
     "pop": "projects/sat-io/open-datasets/hrsl/hrslpop",
     "admin0": "projects/ee-csaybar-real/assets/admin0",
     "admin1": "projects/ee-csaybar-real/assets/admin1",
-    "admin2": "projects/ee-csaybar-real/assets/admin2"
+    "admin2": "projects/ee-csaybar-real/assets/admin2",
 }
 
 
 def fetch_gee_metadata(image, points, reducer, scale):
     """Fetch metadata from an Earth Engine image."""
-    data = image.reduceRegions(collection=points, reducer=reducer, scale=scale).getInfo()
+    data = image.reduceRegions(
+        collection=points, reducer=reducer, scale=scale
+    ).getInfo()
     return pd.DataFrame([d["properties"] for d in data["features"]]).fillna(0)
 
 
@@ -31,13 +33,13 @@ def load_admin_codes():
         for level in ["0", "1", "2"]
     }
 
+
 def map_admin_codes(admin_dfs, metadata_df):
     """Map administrative codes to descriptive names."""
     for level, admin_df in admin_dfs.items():
-        metadata_df = (
-            metadata_df.join(admin_df, on=f"admin_code{level}", how="left", rsuffix="_rai")
-            .drop(columns=[f"admin_code{level}", f"admin_code{level}_rai"])
-        )
+        metadata_df = metadata_df.join(
+            admin_df, on=f"admin_code{level}", how="left", rsuffix="_rai"
+        ).drop(columns=[f"admin_code{level}", f"admin_code{level}_rai"])
     metadata_df.columns = ["admin0", "admin1", "admin2"]
     return metadata_df
 
