@@ -39,7 +39,7 @@ theme:
 
 
 extra_css:
-  - ./assets/style/style.css
+  - ./docs/style.css
 
 # Page tree
 nav:
