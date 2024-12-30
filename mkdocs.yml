@@ -6,10 +6,11 @@ site_url: https://tacofoundation.github.io/tortilla-python/
 site_author: Cesar Aybar
 site_description: A simple python format to storage files.
 
-repo_url: https://github.com/tacofoundation/tortilla-python
-repo_name: tacofoundation/tortilla-python
-use_directory_urls: false
 
+# Repository
+repo_url: https://github.com/tacofoundation/tortilla-python
+repo_name: tortilla-python
+use_directory_urls: false
 
 # Configuration
 theme:
@@ -31,8 +32,8 @@ theme:
   font:
     text: Roboto
     code: Roboto Mono
-  logo: assets/images/tortilla.png
-  favicon: assets/images/tortilla.png
+  logo: ./assets/images/tortilla.png
+  favicon: ./assets/images/tortilla.png
   features:
     - navigation.instant
     - navigation.tabs
@@ -51,24 +52,6 @@ nav:
     - README.md
     - Contributing: CONTRIBUTING.md
     - Code of conduct: CODE_OF_CONDUCT.md
-  # - Changelog: CHANGELOG.md
-  # - Functions: 
-  #   - ./docs/FUNCTIONS.md
-  #   - Query metadata: ./docs/Functions/query_metadata.md
-  #   - Process Image: ./docs/Functions/process_image.md
-  #   - Download Data: ./docs/Functions/download_data.md
-  # - Processes: 
-  #   - ./docs/PROCESSES.md
-  #   - Recursion: ./docs/Process/recursion.md
-  #   - Concurrency: ./docs/Process/concurrency.md
-  #   - Parallelism: ./docs/Process/parallelism.md
-  #   - Difference: ./docs/Process/difference.md
-  # - Comparation:
-  #   - ./docs/COMPARATION.md
-  #   - Get: ./docs/Comparation/eedatagetPixels.md
-  #   - Compute: ./docs/Comparation/eedatacomputePixels.md
-  #   - Comparison: ./docs/Comparation/comparison.md
-  #   - Conclusion: ./docs/Comparation/conclusion.md
 
 # Plugins
 plugins:
