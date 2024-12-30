@@ -50,7 +50,7 @@ This package is “re-exported” within [`tacotoolbox`](https://github.com/taco
 
 ## **Goals**
 
-1. **Metadata handling**: Defines classes (`Sample`, `Samples`, `Collection`) to describe and structure your data’s information.
+1. **Metadata handling**: Defines classes (`Sample`, `Samples`) to describe and structure your data’s information.
 2. **Dataset structuring**: Easily generate training, validation, and testing splits, and store them in `.tortilla` files.
 3. **Internal validation**: Validate your dataset’s integrity (e.g., opening each file with [rasterio](https://rasterio.readthedocs.io)).
 4. **Integration with Earth Engine (ee)**: Combines local data operations with GEE functionalities.
