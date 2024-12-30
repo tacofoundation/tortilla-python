@@ -88,7 +88,6 @@ pip install .
 
 In this guide, we delve deeper into the step-by-step creation of `.tortilla` files, providing tips and best practices.
 
-Make sure you have `pytortilla` installed, as well as [rasterio](https://rasterio.readthedocs.io/), [pandas](https://pandas.pydata.org), [scikit-learn](https://scikit-learn.org), etc.
 
 ```python
 import pathlib
