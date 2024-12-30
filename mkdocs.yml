@@ -5,9 +5,6 @@ site_url: https://github.com/tacofoundation/tortilla-python
 site_description: A simple python format to storage files.
 site_author: Cesar Aybar
 
-
-copyright: Maintained by <a href="https://csaybar.com">Florian</a>.
-
 repo_url: https://github.com/tacofoundation/tortilla-python
 repo_name: tacofoundation/tortilla-python
 # Configuration
@@ -42,15 +39,15 @@ theme:
 
 
 extra_css:
-  - ./docs/style.css
+  - ./assets/style/style.css
 
 # Page tree
 nav:
   - Home: 
     - README.md
     - Contributing: CONTRIBUTING.md
-    - Changelog: CHANGELOG.md
     - Code of conduct: CODE_OF_CONDUCT.md
+  # - Changelog: CHANGELOG.md
   # - Functions: 
   #   - ./docs/FUNCTIONS.md
   #   - Query metadata: ./docs/Functions/query_metadata.md
