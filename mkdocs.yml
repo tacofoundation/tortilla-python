@@ -1,12 +1,16 @@
 docs_dir: .
-site_name: tortilla-spec
 
-site_url: https://github.com/tacofoundation/tortilla-python
-site_description: A simple python format to storage files.
+# Project information
+site_name: Pytortilla
+site_url: https://tacofoundation.github.io/tortilla-python/
 site_author: Cesar Aybar
+site_description: A simple python format to storage files.
 
 repo_url: https://github.com/tacofoundation/tortilla-python
 repo_name: tacofoundation/tortilla-python
+use_directory_urls: false
+
+
 # Configuration
 theme:
   name: material
