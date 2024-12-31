@@ -1,8 +1,9 @@
 
 # 
 <p align="center">
-  <img src="assets/images/tortilla.png" width="40%">
+  <img src="https://raw.githubusercontent.com/tacofoundation/tacofoundation.github.io/refs/heads/main/public/tortilla.png" width="40%">
 </p>
+
 
 <p align="center">
     <em>The file format behind TACO.</em> 🫓
