@@ -523,19 +523,19 @@ pip<span class="w"> </span>install<span class="w"> </span>.
 <p><em>Note:</em> You may also install it as part of <a href="https://github.com/tacofoundation/tacotoolbox"><code>tacotoolbox</code></a>, where <code>pytortilla</code> is included as a dependency.</p>
 <h2 id="usage-guide"><strong>Usage guide</strong></h2>
 <p>In this guide, we delve deeper into the step-by-step creation of <code>.tortilla</code> files, providing tips and best practices.</p>
-<div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">pathlib</span>
-<span class="kn">import</span> <span class="nn">rasterio</span>
-<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
-<span class="kn">from</span> <span class="nn">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span>
-<span class="kn">import</span> <span class="nn">pytortilla</span>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">pathlib</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">rasterio</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.model_selection</span><span class="w"> </span><span class="kn">import</span> <span class="n">train_test_split</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pytortilla</span>
 </code></pre></div>
 <p>If you need Earth Engine:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">ee</span>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">ee</span>
 <span class="n">ee</span><span class="o">.</span><span class="n">Initialize</span><span class="p">()</span>  <span class="c1"># Requires prior authentication if not done already</span>
 </code></pre></div>
 <h3 id="files"><strong>Files</strong></h3>
 <p>Move the Files from Hugging Face to Your Local Machine</p>
-<div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">os</span>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 
 <span class="c1"># URL path to the Hugging Face repository</span>
 <span class="n">path</span> <span class="o">=</span> <span class="s2">&quot;https://huggingface.co/datasets/tacofoundation/tortilla_demo/resolve/main/&quot;</span>
@@ -563,11 +563,11 @@ pip<span class="w"> </span>install<span class="w"> </span>.
 <p>At this point, you should have a <code>demo/</code> folder populated with several <code>.tif</code> files.</p>
 <h3 id="creating-samples"><strong>Creating samples</strong></h3>
 <p>Now, we will create samples using <code>pytortilla</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">pathlib</span>
-<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
-<span class="kn">from</span> <span class="nn">sklearn.model_selection</span> <span class="kn">import</span> <span class="n">train_test_split</span>
-<span class="kn">import</span> <span class="nn">rasterio</span>
-<span class="kn">from</span> <span class="nn">pytortilla.datamodel</span> <span class="kn">import</span> <span class="n">Sample</span><span class="p">,</span> <span class="n">Samples</span>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">pathlib</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.model_selection</span><span class="w"> </span><span class="kn">import</span> <span class="n">train_test_split</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">rasterio</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pytortilla.datamodel</span><span class="w"> </span><span class="kn">import</span> <span class="n">Sample</span><span class="p">,</span> <span class="n">Samples</span>
 
 <span class="c1"># Define the local path containing the TIFF files</span>
 <span class="n">demo_path</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;./demo&quot;</span><span class="p">)</span>
@@ -617,7 +617,7 @@ pip<span class="w"> </span>install<span class="w"> </span>.
 </code></pre></div>
 <h3 id="generating-the-tortilla-file"><strong>Generating the <code>.tortilla</code> file</strong></h3>
 <p>Use <code>pytortilla.create.main.create()</code> (or the equivalent <code>tacotoolbox.tortilla.create</code> if you have <code>tacotoolbox</code> installed):</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span> <span class="nn">pytortilla.create.main</span> <span class="kn">import</span> <span class="n">create</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">pytortilla.create.main</span><span class="w"> </span><span class="kn">import</span> <span class="n">create</span>
 
 <span class="c1"># Generate the .tortilla file</span>
 <span class="n">output_file</span> <span class="o">=</span> <span class="n">create</span><span class="p">(</span>
@@ -630,8 +630,8 @@ pip<span class="w"> </span>install<span class="w"> </span>.
 <p>The .tortilla might split into multiple files (<code>.0000.part.tortilla</code>, etc.) for large datasets.</p>
 <h3 id="loading-and-using-the-tortilla-file"><strong>Loading and using the <code>.tortilla</code> file</strong></h3>
 <p>Finally, load the <code>.tortilla</code> file (or its parts) with tacoreader:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">import</span> <span class="nn">tacoreader</span>
-<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">tacoreader</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 
 <span class="n">dataset_chunks</span> <span class="o">=</span> <span class="p">[]</span>
 
