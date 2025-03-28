@@ -164,13 +164,18 @@ def create_a_tortilla(
 
     # Define the function to write into the main file
     def write_file(file, offset, length):
-        """read the file in chunks"""
+        """read the file in chunks"""        
         with open(file, "rb") as g:
             while True:
                 chunk = g.read(chunk_size_iter_bytes)
+                
+                # Break if there is no more data
                 if not chunk:
                     break
-                mm[offset : (offset + length)] = chunk
+
+                # If chunk is smaller than the chunk_size_iter_bytes
+                mm[offset : (offset + len(chunk))] = chunk
+                offset += len(chunk)
 
     # Cook the tortilla 🫓
     with open(output, "r+b") as f:
@@ -197,7 +202,7 @@ def create_a_tortilla(
             ) as executor:
 
                 # Submit the files to be written
-                futures = []
+                futures = []                
                 for path, offset, length in zip(
                     internal_path,
                     metadata["tortilla:offset"],
@@ -217,6 +222,11 @@ def create_a_tortilla(
                     )
                 else:
                     concurrent.futures.wait(futures)
+
+            # print if error
+            for future in futures:
+                if future.exception():
+                    raise future.exception()
 
             # Write the FOOTER
             mm[bytes_counter : (bytes_counter + len(FOOTER))] = FOOTER
