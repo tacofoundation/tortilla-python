@@ -1,54 +1,71 @@
-site_name: tortilla-spec
-repo_url: https://github.com/csaybar/tortilla-spec
-site_url: https://csaybar.github.io/tortilla-spec
-site_description: A simple python format to storage files.
-site_author: Cesar Aybar
-edit_uri: edit/main/docs/
-repo_name: csaybar/tortilla-spec
-copyright: Maintained by <a href="https://csaybar.com">Florian</a>.
+docs_dir: .
 
-nav:
-  - Home: index.md
-  - Modules: modules.md
-plugins:
-  - search
-  - mkdocstrings:
-      handlers:
-        python:
-          setup_commands:
-            - import sys
-            - sys.path.append('../')
+# Project information
+site_name: Pytortilla
+site_url: https://tacofoundation.github.io/tortilla-python/
+site_author: Cesar Aybar
+site_description: A simple python format to storage files.
+
+
+# Repository
+repo_url: https://github.com/tacofoundation/tortilla-python
+repo_name: tortilla-python
+use_directory_urls: false
+
+# Configuration
 theme:
   name: material
-  feature:
-    tabs: true
+  language: en
   palette:
-    - media: "(prefers-color-scheme: light)"
-      scheme: default
-      primary: white
-      accent: deep orange
+    - scheme: default
+      primary: '#d49f0c'
+      accent: '#d49f0c'
       toggle:
-        icon: material/brightness-7
+        icon: material/toggle-switch-off-outline
         name: Switch to dark mode
-    - media: "(prefers-color-scheme: dark)"
-      scheme: slate
-      primary: black
-      accent: deep orange
+    - scheme: slate
+      primary: '#201357'
+      accent: white
       toggle:
-        icon: material/brightness-4
+        icon: material/toggle-switch
         name: Switch to light mode
-  icon:
-    repo: fontawesome/brands/github
+  font:
+    text: Roboto
+    code: Roboto Mono
+  logo: ./assets/images/tortilla.png
+  favicon: ./assets/images/tortilla.png
+  features:
+    - navigation.instant
+    - navigation.tabs
+    - navigation.top
+    - navigation.expand
+    - navigation.indexes
+    - header.autohide   
 
-extra:
-  social:
-    - icon: fontawesome/brands/github
-      link: https://github.com/csaybar/tortilla-spec
-    - icon: fontawesome/brands/python
-      link: https://pypi.org/project/tortilla-spec
+
+extra_css:
+  - ./docs/style.css
+
+# Page tree
+nav:
+  - Home: 
+    - README.md
+    - Contributing: CONTRIBUTING.md
+    - Code of conduct: CODE_OF_CONDUCT.md
+
+# Plugins
+plugins:
+  - search
+  - same-dir
+  - mkdocstrings 
+  - awesome-pages
 
 markdown_extensions:
-  - toc:
-      permalink: true
-  - pymdownx.arithmatex:
-      generic: true
+  - meta
+  - admonition
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.pathconverter
+  - pymdownx.tabbed
+  - mdx_truly_sane_lists
+  - pymdownx.tasklist
